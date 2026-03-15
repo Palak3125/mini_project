@@ -1,11 +1,11 @@
 text,department,priority
 College WiFi not working since morning,IT,High
 Student portal login failing repeatedly,IT,High
-Projector not working in classroom 301,IT,Medium
+Projector not working in classroom 3,IT,Medium
 Computer lab systems are very slow,IT,Medium
 Online exam portal crashing,IT,High
 Email ID not activated for new students,IT,Medium
-Smart board not responding,IT,Medium
+Projector not responding,IT,Medium
 LAN connection down in lab 2,IT,High
 Printer not working in admin office,IT,Medium
 College website loading very slowly,IT,Medium
@@ -14,9 +14,8 @@ Password reset link not functioning,IT,Medium
 Server down during internal submission,IT,High
 Internet speed extremely slow in hostel,IT,High
 Antivirus expired on lab computers,IT,Low
-Broken benches in classroom 105,Infrastructure,Medium
-Water leakage in seminar hall,Infrastructure,High
-Lift not working in main building,Infrastructure,High
+Broken benches in classroom 1,Infrastructure,Medium
+Water leakage in Washroom,Infrastructure,High
 Washroom not cleaned properly,Infrastructure,Medium
 Air conditioner not cooling in lab,Infrastructure,Medium
 Fan not working in classroom,Infrastructure,Low
@@ -26,19 +25,16 @@ Ceiling leakage during rain,Infrastructure,High
 Power outage in academic block,Infrastructure,High
 Garbage not collected in campus,Infrastructure,Medium
 Classroom windows broken,Infrastructure,Low
-Drainage blockage near parking area,Infrastructure,High
 Fire alarm not working,Infrastructure,High
 Parking area lights not working,Infrastructure,Medium
 Admission confirmation email not received,Administration,Medium
 Exam timetable not announced yet,Administration,Medium
 ID card not issued after 2 weeks,Administration,Low
-Bus pass not provided,Administration,Medium
 Scholarship form verification delayed,Administration,High
 Bonafide certificate request pending,Administration,Low
 Transfer certificate not issued,Administration,High
 Convocation registration issue,Administration,Medium
 No response from admin office,Administration,High
-Hall booking request not approved,Administration,Low
 Incorrect attendance marked in system,HR,High
 Leave request not approved,HR,Medium
 Salary not credited to staff,HR,High
@@ -51,8 +47,6 @@ Grievance about supervisor behavior,HR,High
 Holiday list not published,HR,Low
 Library books not available,Library,Medium
 Library fine added wrongly,Library,Low
-Library AC not working,Library,Medium
-Library computer not functioning,Library,Medium
 Library membership not activated,Library,Low
 Noise disturbance in library,Library,Medium
 Book issue system not working,Library,High
@@ -63,9 +57,8 @@ Hostel water supply stopped,Hostel,High
 Hostel WiFi not working,Hostel,High
 Room cleaning not done regularly,Hostel,Medium
 Mess food quality very poor,Hostel,Medium
-Electricity outage in hostel block B,Hostel,High
+Electricity outage in hostel ,Hostel,High
 Broken bed in hostel room,Hostel,Low
-Hostel lift not functioning,Hostel,High
 Water leakage in hostel bathroom,Hostel,High
 Security issue in hostel at night,Hostel,High
 Hot water not available in hostel,Hostel,Medium
@@ -124,10 +117,8 @@ Course registration portal not working,IT,High
 Scholarship approval pending for months,Administration,High
 Incorrect hostel fee charged,Accounts,High
 Marks not visible in student portal,Academics,High
-Lift stuck between floors,Infrastructure,High
 Broken whiteboard in classroom,Infrastructure,Low
 Library catalog search not working,Library,Medium
-Hostel complaint about noisy neighbors,Hostel,Medium
 Timetable not updated online,Academics,Medium
 College bus arrived late regularly,Administration,Medium
 Fee payment status showing unpaid incorrectly,Accounts,Medium
@@ -146,3 +137,12 @@ Transfer application pending approval,Administration,Medium
 Lost library book fine too high,Library,Medium
 Hostel complaint about food timing,Hostel,Medium
 Internal assessment marks missing,Academics,High
+Pad Machine not working in girls washroom,Maintenance,Medium
+Broken Tubelights in washrooms,Electrical,high
+No handwash in washroom,HouseKeeping,High
+Watercooler hygiene issue,Housekeeping,High
+No availability of food in canteen,Canteen,Medium
+Camera not working in Campus,Security,High
+Theft incidents happening in hostel,Security,High
+No general stores available near hostel,Administration,low
+Course faculty not available for full semester,Academics,High
