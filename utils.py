@@ -25,3 +25,17 @@ def fallback_priority(text):
         return "Medium"
     else:
         return "Low"
+
+def normalize_text(text):
+    text = text.lower().strip()
+
+    if "wifi" in text or "internet" in text:
+        return "wifi not working"
+    if "water" in text and ("leak" in text or "tap" in text):
+        return "water leakage"
+    if "electric" in text or "power" in text:
+        return "power issue"
+    if "fan" in text or "ac" in text:
+        return "cooling issue"
+
+    return text
