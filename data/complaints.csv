@@ -1,5 +1,5 @@
 text,department,priority
-College WiFi not working since morning,IT,High
+WiFi not working,IT,High
 Student portal login failing repeatedly,IT,High
 Projector not working in classroom 3,IT,Medium
 Computer lab systems are very slow,IT,Medium
@@ -146,3 +146,92 @@ Camera not working in Campus,Security,High
 Theft incidents happening in hostel,Security,High
 No general stores available near hostel,Administration,low
 Course faculty not available for full semester,Academics,High
+
+Lift not working in academic block,Infrastructure,High
+CCTV cameras not recording in parking area,Security,High
+Mess food served cold during peak hours,Hostel,Medium
+Placement portal not showing eligible companies,IT,High
+Lab equipment outdated for experiments,Academics,Medium
+Voltage fluctuations in labs damaging systems,Infrastructure,High
+Attendance marked absent despite presence,Academics,High
+Faculty arriving late regularly,Academics,Medium
+Sports ground not maintained properly,Sports,Low
+No drinking water in sports complex,Infrastructure,Medium
+Bus driver not following schedule,Transport,Medium
+College bus overcrowded,Transport,Medium
+Bus route not covering new hostel,Transport,High
+Parking space insufficient for students,Infrastructure,Medium
+Bike theft reported in parking area,Security,High
+No security guard at main gate at night,Security,High
+ID card scanner not working at entry gate,Security,Medium
+Unauthorized entry in campus,Security,High
+Fire extinguisher expired in lab,Infrastructure,High
+Benches uncomfortable for long lectures,Infrastructure,Low
+Projector brightness very low,IT,Medium
+Whiteboard markers not available,Administration,Low
+Classroom lights too dim,Infrastructure,Low
+Noise from construction disturbing classes,Infrastructure,Medium
+AC leaking water in classroom,Infrastructure,Medium
+Dust accumulation in classrooms,Housekeeping,Low
+Classroom door lock broken,Infrastructure,Medium
+Broken tiles in corridor,Infrastructure,Medium
+Library opens late during exams,Library,Medium
+No access to online journals,Library,High
+Library computers not working,IT,Medium
+Students talking loudly in library,Library,Low
+Insufficient charging points in library,Infrastructure,Medium
+Library AC too cold,Library,Low
+Book reservation system not working,IT,High
+Limited copies of important textbooks,Library,Medium
+Old syllabus books still in circulation,Library,Low
+Library staff not responsive,Library,Medium
+Hostel rooms too congested,Hostel,Medium
+No pest control in hostel rooms,Hostel,Medium
+Mosquito problem in hostel,Hostel,Medium
+Mess menu repetitive every week,Hostel,Low
+Mess staff hygiene issue,Hostel,High
+Drinking water quality poor in hostel,Hostel,High
+Laundry machines not working,Hostel,Medium
+Hostel lift not functioning,Hostel,High
+Noise disturbance at night in hostel,Hostel,Medium
+No WiFi coverage in some hostel rooms,Hostel,High
+Exam question paper out of syllabus,Academics,High
+Internal marks biased,Academics,High
+Rechecking request ignored,Academics,High
+Exam hall fans not working,Infrastructure,Medium
+Late start of exam causing confusion,Academics,Medium
+Exam invigilator behavior rude,Academics,Medium
+Answer sheets not shown after evaluation,Academics,High
+Assignment deadlines too close,Academics,Medium
+Group project members not cooperating,Academics,Low
+No guidance for final year project,Academics,High
+Scholarship rejected without reason,Administration,High
+Bonafide certificate delay,Administration,Medium
+Name spelling mistake in documents,Administration,Medium
+Migration certificate not issued,Administration,High
+Late update of notices on website,IT,Medium
+Admin office closed during working hours,Administration,High
+Delay in hostel allotment list,Administration,High
+No response to student emails,Administration,High
+Lost documents submitted to office,Administration,High
+Manual paperwork taking too long,Administration,Medium
+Fee hike without prior notice,Accounts,High
+Extra charges added incorrectly,Accounts,High
+Refund delayed for dropped course,Accounts,High
+Payment receipt not emailed,Accounts,Medium
+Online payment failed but deducted,Accounts,High
+Hostel fee miscalculated,Accounts,High
+Bus fee charged incorrectly,Accounts,Medium
+Fine imposed wrongly,Accounts,Medium
+Scholarship not reflected in fees,Accounts,High
+No installment option for fees,Accounts,Medium
+Faculty not completing syllabus,Academics,High
+Too fast teaching pace,Academics,Medium
+Doubt sessions not conducted,Academics,Medium
+Notes not shared by faculty,Academics,Medium
+Lab assistant not available,Academics,Medium
+Practical exams poorly organized,Academics,Medium
+Outdated curriculum content,Academics,Low
+No industry exposure sessions,Academics,Low
+Guest lectures cancelled frequently,Academics,Low
+Internship support not provided,Placement,Medium

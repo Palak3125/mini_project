@@ -15,3 +15,13 @@ def preprocess(text):
     words = text.split()
     words = [lemmatizer.lemmatize(word) for word in words if word not in stop_words]
     return " ".join(words)
+
+def fallback_priority(text):
+    text = text.lower()
+
+    if "urgent" in text or "emergency" in text:
+        return "High"
+    elif "not working" in text:
+        return "Medium"
+    else:
+        return "Low"
