@@ -1,7 +1,9 @@
-import os
-import sqlite3
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+import mysql.connector
 
 def get_connection():
-    return sqlite3.connect(os.path.join(BASE_DIR, "complaints.db"))
+    return mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="12@34#",
+        database="complaints_db"
+    )
