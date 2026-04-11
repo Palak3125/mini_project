@@ -1,8 +1,8 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pickle
-from database import get_connection
-from utils import preprocess, fallback_priority
+from mini_project.backend.database import get_connection
+from mini_project.backend.utils import preprocess, fallback_priority
 from sklearn.metrics.pairwise import cosine_similarity
 import time
 import bcrypt

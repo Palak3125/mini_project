@@ -63,7 +63,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 
-from utils import preprocess
+from mini_project.backend.utils import preprocess
 
 # 1. Load dataset
 df = pd.read_csv("data/complaints.csv")
