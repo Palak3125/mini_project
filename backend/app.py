@@ -1,14 +1,17 @@
+import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pickle
-from mini_project.backend.database import get_connection
-from mini_project.backend.utils import preprocess, fallback_priority
+from backend.database import get_connection
+from backend.utils import preprocess, fallback_priority
 from sklearn.metrics.pairwise import cosine_similarity
 import time
 import bcrypt
 import jwt
 import datetime
 from functools import wraps
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 app = Flask(__name__)
 CORS(app)
@@ -53,9 +56,9 @@ def verify_token(f):
     return decorated
 
 # Load models
-vectorizer = pickle.load(open("models/vectorizer.pkl", "rb"))
-dept_model = pickle.load(open("models/department_model.pkl", "rb"))
-priority_model = pickle.load(open("models/priority_model.pkl", "rb"))
+vectorizer = pickle.load(open(os.path.join(BASE_DIR, "models/vectorizer.pkl"), "rb"))
+dept_model = pickle.load(open(os.path.join(BASE_DIR, "models/department_model.pkl"), "rb"))
+priority_model = pickle.load(open(os.path.join(BASE_DIR, "models/priority_model.pkl"), "rb"))
 
 # ================= ROUTES =================
 
