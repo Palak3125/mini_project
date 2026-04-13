@@ -1,33 +1,28 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Send, Shield, X, Lock } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { Send, Shield, Lock, User } from 'lucide-react';
 import Button from '../components/Button';
-import Input from '../components/Input';
-import Card from '../components/Card';
+import { useTickets } from '../context/TicketContext';
 
 export default function Home() {
   const navigate = useNavigate();
-  const [showAdminModal, setShowAdminModal] = useState(false);
-  const [adminCreds, setAdminCreds] = useState({ id: '', password: '' });
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const { user } = useTickets();
 
-  const handleAdminLogin = (e) => {
-    e.preventDefault();
-    setIsLoggingIn(true);
-    
-    setTimeout(() => {
-      setIsLoggingIn(false);
-      if (adminCreds.password === 'admin123') {
-        toast.success("Welcome, Admin");
-        navigate('/admin');
-      } else {
-        toast.error("Invalid credentials. Please try again.");
-      }
-    }, 1000);
+  const handleActionClick = (path) => {
+    if (!user) {
+      navigate('/login');
+    } else {
+      navigate(path);
+    }
   };
 
-  const isLoginValid = adminCreds.id.trim() && adminCreds.password.trim();
+  const handleAdminClick = () => {
+    navigate('/login?tab=admin');
+  };
+
+  const handleStudentClick = () => {
+    navigate('/login?tab=student');
+  };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] px-4 py-16 animate-in fade-in zoom-in duration-500 relative overflow-hidden">
@@ -51,7 +46,7 @@ export default function Home() {
           <Button 
             variant="primary" 
             className="text-lg py-4 px-8 flex-1"
-            onClick={() => navigate('/submit')}
+            onClick={() => handleActionClick('/submit')}
             icon={Send}
           >
             Submit Complaint
@@ -59,64 +54,21 @@ export default function Home() {
           <Button 
             variant="secondary" 
             className="text-lg py-4 px-8 flex-1 bg-slate-800/80 hover:bg-slate-700 hover:text-white"
-            onClick={() => setShowAdminModal(true)}
+            onClick={handleAdminClick}
             icon={Lock}
           >
-            Admin Login
+            Admin Portal
           </Button>
         </div>
-      </div>
-
-      {/* Admin Login Modal */}
-      {showAdminModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in">
-          <Card className="w-full max-w-md bg-slate-900 border border-slate-700 shadow-2xl relative animate-in zoom-in-95 duration-300">
-            <button 
-              onClick={() => setShowAdminModal(false)}
-              className="absolute top-4 right-4 p-2 bg-slate-800 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            
-            <div className="text-center mb-8 mt-2">
-              <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-blue-500/20">
-                <Shield className="w-8 h-8 text-blue-400" />
-              </div>
-              <h2 className="text-2xl font-bold text-white">Admin Portal</h2>
-              <p className="text-slate-400 text-sm mt-1">Secure access to the AI resolution backend.</p>
-            </div>
-            
-            <form onSubmit={handleAdminLogin} className="space-y-6">
-              <Input 
-                label="Admin ID / Email" 
-                id="adminId" 
-                placeholder="admin@system.local" 
-                value={adminCreds.id}
-                onChange={(e) => setAdminCreds({...adminCreds, id: e.target.value})}
-              />
-              <Input 
-                label="Password" 
-                id="password" 
-                type="password" 
-                placeholder="••••••••" 
-                value={adminCreds.password}
-                onChange={(e) => setAdminCreds({...adminCreds, password: e.target.value})}
-              />
-              <div className="pt-2">
-                <Button 
-                  type="submit" 
-                  variant="primary" 
-                  className={`w-full ${!isLoginValid && 'opacity-50 grayscale cursor-not-allowed'}`}
-                  isLoading={isLoggingIn}
-                  disabled={!isLoginValid || isLoggingIn}
-                >
-                  {isLoggingIn ? 'Authenticating...' : 'Secure Login'}
-                </Button>
-              </div>
-            </form>
-          </Card>
+        <div className="mt-6">
+          <button 
+            onClick={handleStudentClick}
+            className="text-slate-400 hover:text-white transition-colors text-sm hover:underline flex items-center justify-center mx-auto gap-2"
+          >
+            <User className="w-4 h-4" /> Student Portal
+          </button>
         </div>
-      )}
+      </div>
     </div>
   );
 }

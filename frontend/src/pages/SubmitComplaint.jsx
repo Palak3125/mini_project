@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Send, CheckCircle2, Copy, FileText, Search, Bot } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -16,15 +16,8 @@ const LOADING_STEPS = [
 
 export default function SubmitComplaint() {
   const navigate = useNavigate();
-  const { addTicket } = useTickets();
-  const [formData, setFormData] = useState({ 
-    firstName: '', 
-    lastName: '', 
-    rollNo: '',
-    phone: '',
-    email: '', 
-    description: '' 
-  });
+  const { user, addTicket } = useTickets();
+  const [description, setDescription] = useState('');
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
@@ -32,59 +25,46 @@ export default function SubmitComplaint() {
   const [ticketId, setTicketId] = useState('');
   const [copied, setCopied] = useState(false);
 
+  // Redirect if not logged in
+  useEffect(() => {
+    if (!user) {
+      toast.error("Please login to submit a complaint");
+      navigate('/login');
+    }
+  }, [user, navigate]);
+
   // Computed state & validation
-  const charCount = formData.description.length;
-  
-  const isValidPhone = /^\d{10}$/.test(formData.phone);
-  const isValidRollNo = formData.rollNo.length >= 5;
-  const isValidDesc = charCount >= 10;
-  
-  const isFormValid = 
-    formData.firstName.trim() && 
-    formData.lastName.trim() && 
-    isValidRollNo && 
-    isValidPhone && 
-    isValidDesc;
+  const charCount = description.length;
+  const isFormValid = charCount >= 10;
     
   // AI Prediction fake logic
   const isTyping = charCount > 10 && !isSubmitting && !isSuccess;
   const aiThought = charCount > 50 ? "AI Analysis: Routing to relevant department..." : "AI is detecting possible category...";
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!isFormValid) return;
+    if (!isFormValid || !user) return;
     
     setIsSubmitting(true);
     setLoadingStep(0);
     
-    // Animate loading text
     const interval = setInterval(() => {
       setLoadingStep(prev => Math.min(prev + 1, LOADING_STEPS.length - 1));
     }, 800);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const result = await addTicket(description);
+      
       clearInterval(interval);
       setIsSubmitting(false);
       setIsSuccess(true);
-      const newTicketId = `TCK-${Math.floor(Math.random() * 90000) + 10000}`;
-      setTicketId(newTicketId);
-      
-      // Add to global state
-      addTicket({
-        id: newTicketId,
-        text: formData.description,
-        dept: "General User Issue", // Mock AI dept
-        priority: "Medium", // Mock AI priority
-        confidence: 85,
-        status: "Submitted",
-        agent: "Unassigned",
-        keywords: formData.description.split(' ').slice(0, 3), // Mock keywords
-        date: new Date().toLocaleDateString()
-      });
-      
-      toast.success("Ticket successfully generated!");
-    }, 2500);
+      setTicketId(result.ticket_id);
+      toast.success(result.message || "Ticket successfully generated!");
+
+    } catch (err) {
+      clearInterval(interval);
+      setIsSubmitting(false);
+    }
   };
 
   const copyToClipboard = () => {
@@ -145,6 +125,9 @@ export default function SubmitComplaint() {
     );
   }
 
+  // Prevent render flash if redirecting
+  if (!user) return null;
+
   return (
     <div className="min-h-[calc(100vh-80px)] px-4 py-16 animate-in slide-in-from-bottom-8 duration-500">
       <div className="text-center max-w-2xl mx-auto mb-10">
@@ -157,63 +140,6 @@ export default function SubmitComplaint() {
 
       <Card className={commonCardStyles}>
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Row 1 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <Input 
-              label="First Name" 
-              id="firstName" 
-              placeholder="John" 
-              required 
-              value={formData.firstName}
-              onChange={(e) => setFormData({...formData, firstName: e.target.value})}
-            />
-            <Input 
-              label="Last Name" 
-              id="lastName" 
-              placeholder="Doe" 
-              required 
-              value={formData.lastName}
-              onChange={(e) => setFormData({...formData, lastName: e.target.value})}
-            />
-          </div>
-          
-          {/* Row 2 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="relative">
-              <Input 
-                label="Roll Number" 
-                id="rollNo" 
-                placeholder="23BCS1021" 
-                required 
-                value={formData.rollNo}
-                onChange={(e) => setFormData({...formData, rollNo: e.target.value})}
-                error={formData.rollNo.length > 0 && !isValidRollNo ? "Roll number required (min 5 chars)" : ""}
-              />
-            </div>
-            <div className="relative">
-              <Input 
-                label="Phone Number" 
-                id="phone" 
-                placeholder="9876543210" 
-                required 
-                value={formData.phone}
-                onChange={(e) => setFormData({...formData, phone: e.target.value.replace(/\D/g, '')})}
-                error={formData.phone.length > 0 && !isValidPhone ? "Invalid phone number (10 digits)" : ""}
-              />
-            </div>
-          </div>
-          
-          {/* Row 3 */}
-          <Input 
-            label="Email Address (Optional)" 
-            id="email" 
-            type="email" 
-            placeholder="john.doe@example.com" 
-            value={formData.email}
-            onChange={(e) => setFormData({...formData, email: e.target.value})}
-          />
-          
-          {/* Row 4 */}
           <div className="relative">
             <Input 
               label="Complaint Description" 
@@ -221,10 +147,10 @@ export default function SubmitComplaint() {
               placeholder="Describe your issue clearly (min 10 characters)..." 
               isTextArea 
               required 
-              value={formData.description}
-              onChange={(e) => setFormData({...formData, description: e.target.value})}
-              error={charCount > 0 && !isValidDesc ? "Minimum 10 characters required." : ""}
-              className="mb-2"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              error={charCount > 0 && !isFormValid ? "Minimum 10 characters required." : ""}
+              className="mb-2 min-h-[150px]"
             />
             <div className="flex justify-between items-center px-1 mt-1">
               <div className="h-5 flex items-center transition-opacity duration-300">

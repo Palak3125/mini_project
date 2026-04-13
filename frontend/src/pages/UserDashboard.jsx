@@ -1,17 +1,27 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Inbox, FileText } from 'lucide-react';
 import Card from '../components/Card';
 import StatusBadge from '../components/StatusBadge';
 import { useTickets } from '../context/TicketContext';
 
 export default function UserDashboard() {
-  const { tickets } = useTickets();
+  const navigate = useNavigate();
+  const { user, tickets } = useTickets();
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+    }
+  }, [user, navigate]);
 
   // In a real app we'd filter tickets associated with the logged in user's ID
   // For demo, we just show all tickets created (simulating the user owning them all)
   const userTickets = useMemo(() => {
     return tickets;
   }, [tickets]);
+
+  if (!user) return null;
 
   return (
     <div className="flex flex-col items-center min-h-[calc(100vh-80px)] px-4 py-16 animate-in fade-in duration-500">

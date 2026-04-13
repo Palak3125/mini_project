@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Filter, Search, X, BrainCircuit, Activity, Users, FileText, AlertCircle, Inbox, UserPlus } from 'lucide-react';
+import { Filter, Search, X, BrainCircuit, Activity, Users, FileText, AlertCircle, Inbox, UserPlus, CheckCircle2 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import toast from 'react-hot-toast';
 import Sidebar from '../components/Sidebar';

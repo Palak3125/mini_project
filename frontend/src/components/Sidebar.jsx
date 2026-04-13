@@ -1,9 +1,12 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, Grid, Settings, LogOut, Shield } from 'lucide-react';
+import { useTickets } from '../context/TicketContext';
 
 export default function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { logout } = useTickets();
   
   const NavItem = ({ to, icon: Icon, label }) => {
     const isActive = location.pathname === to;
@@ -44,14 +47,13 @@ export default function Sidebar() {
 
       <div className="p-4 border-t border-white/10 space-y-2">
         <NavItem to="/admin/settings" icon={Settings} label="Settings" />
-        <Link 
-          to="/" 
-          onClick={() => console.log("clicked Exit")}
+        <button 
+          onClick={() => { logout(); navigate('/'); }}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-slate-400 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 border border-transparent active:scale-95 group hover:shadow-md"
         >
           <LogOut className="w-5 h-5 text-slate-500 group-hover:text-red-400" />
           <span className="font-medium">Exit System</span>
-        </Link>
+        </button>
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, AlertCircle, CheckCircle2, SearchX } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../components/Button';
@@ -11,42 +12,73 @@ import { useTickets } from '../context/TicketContext';
 const STEPS = ["Submitted", "In Review", "In Progress", "Resolved"];
 
 export default function TrackComplaint() {
-  const { tickets } = useTickets();
+  const navigate = useNavigate();
+  const { user } = useTickets();
   const [ticketId, setTicketId] = useState('');
   const [isTracking, setIsTracking] = useState(false);
   const [result, setResult] = useState(null); // 'found', 'not_found', null
   const [ticketData, setTicketData] = useState(null);
 
-  const handleTrack = (e) => {
+  useEffect(() => {
+    if (!user) {
+      toast.error("Please login to track your status.");
+      navigate('/login');
+    }
+  }, [user, navigate]);
+
+  const handleTrack = async (e) => {
     e.preventDefault();
     if (!ticketId.trim()) return;
     
+    if (!user) {
+      toast.error("Please securely login from the Home page first.");
+      return;
+    }
+
     setIsTracking(true);
     setResult(null);
 
-    setTimeout(() => {
+    try {
+      const res = await fetch(`http://127.0.0.1:5000/track/${ticketId.trim()}`, {
+        headers: { 'Authorization': `Bearer ${user.token}` }
+      });
+      
       setIsTracking(false);
-      
-      // Query global state
-      const globalTicket = tickets.find(t => t.id.toLowerCase() === ticketId.trim().toLowerCase());
-      
-      if (!globalTicket) {
-        setResult('not_found');
-        toast.error("Invalid Ticket ID. Please check and try again.");
-      } else {
+
+      if (res.ok) {
+        const data = await res.json();
         setResult('found');
         toast.success("Ticket details found!");
+        
+        const mapStatus = (status) => {
+          if (status === 'pending') return 'Submitted';
+          if (status === 'in_progress') return 'In Progress';
+          if (status === 'resolved') return 'Resolved';
+          return 'Submitted';
+        };
+
+        const frontendStatus = mapStatus(data.status);
+        
         setTicketData({
-          id: globalTicket.id,
-          status: globalTicket.status,
-          lastUpdated: globalTicket.date || new Date().toLocaleDateString(),
-          step: STEPS.indexOf(globalTicket.status) + 1 || 1
+          id: ticketId.trim().toUpperCase(),
+          status: frontendStatus,
+          lastUpdated: new Date().toLocaleDateString(),
+          step: STEPS.indexOf(frontendStatus) + 1 || 1
         });
+      } else {
+        setResult('not_found');
+        toast.error("Invalid Ticket ID or not found.");
       }
-    }, 1200);
+    } catch (err) {
+      setIsTracking(false);
+      setResult('not_found');
+      toast.error("Network error while tracking.");
+    }
   };
 
   const commonCardStyles = "w-full max-w-2xl border border-white/10 bg-slate-900/60 shadow-2xl transition-all duration-300 hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)]";
+
+  if (!user) return null;
 
   return (
     <div className="flex flex-col items-center min-h-[calc(100vh-80px)] px-4 py-16 animate-in fade-in duration-500">

@@ -139,8 +139,8 @@ def add_complaint():
 
         cursor.execute("""
             INSERT INTO complaint_master
-            (normalized_text, department, priority, count, ticket_id, location, status)
-            VALUES (%s, %s, %s, 1, %s, %s, 'Pending')
+            (normalized_text, department, priority, count, ticket_id, location, status, agent)
+            VALUES (%s, %s, %s, 1, %s, %s, 'pending', 'Unassigned')
         """, (text, department, priority, ticket_id, new_location))
 
         master_id = cursor.lastrowid
@@ -149,7 +149,7 @@ def add_complaint():
     cursor.execute("""
         INSERT INTO complaints
         (complaint_master_id, text, department, priority, status, student_id)
-        VALUES (%s, %s, %s, %s, 'Pending', %s)
+        VALUES (%s, %s, %s, %s, 'pending', %s)
     """, (master_id, text, department, priority, student_id))
 
     conn.commit()
@@ -162,7 +162,7 @@ def add_complaint():
         "ticket_id": ticket_id,
         "department": department,
         "priority": priority,
-        "status": "Pending",
+        "status": "pending",
         "similarity_used": round(max_similarity, 2),
         "message": message
     })
@@ -178,13 +178,17 @@ def get_complaints():
     page = request.args.get('page', 1, type=int)
     limit = request.args.get('limit', 10, type=int)
     offset = (page - 1) * limit
+    status_filter = request.args.get('status')
+
+    status_condition = "status = 'resolved'" if status_filter == 'resolved' else "status IN ('pending', 'in_progress')"
 
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        SELECT id, ticket_id, normalized_text, department, priority, status, count
+    cursor.execute(f"""
+        SELECT id, ticket_id, normalized_text, department, priority, status, count, agent
         FROM complaint_master
+        WHERE {status_condition}
         ORDER BY count DESC
         LIMIT %s OFFSET %s
     """, (limit, offset))
@@ -203,7 +207,8 @@ def get_complaints():
             "department": row[3],
             "priority": row[4],
             "status": row[5],
-            "count": row[6]
+            "count": row[6],
+            "agent": row[7]
         })
 
     return jsonify(result)
@@ -221,13 +226,13 @@ def resolve_complaint(id):
 
     cursor.execute("""
         UPDATE complaint_master
-        SET status = 'Resolved'
+        SET status = 'resolved'
         WHERE id = %s
     """, (id,))
 
     cursor.execute("""
         UPDATE complaints
-        SET status = 'Resolved'
+        SET status = 'resolved'
         WHERE complaint_master_id = %s
     """, (id,))
 
@@ -236,6 +241,64 @@ def resolve_complaint(id):
     conn.close()
 
     return jsonify({"message": "All complaints resolved"})
+
+
+# 3.5 Set in-progress (BONUS)
+@app.route("/in_progress/<int:id>", methods=["PUT"])
+@verify_token
+def in_progress_complaint(id):
+    if request.user_role != 'admin':
+        return jsonify({"error": "Admin access required"}), 403
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE complaint_master
+        SET status = 'in_progress'
+        WHERE id = %s
+    """, (id,))
+
+    cursor.execute("""
+        UPDATE complaints
+        SET status = 'in_progress'
+        WHERE complaint_master_id = %s
+    """, (id,))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return jsonify({"message": "Complaint status updated to in progress"})
+
+
+# 3.8 Reassign agent (ADMIN VIEW)
+@app.route("/reassign/<int:id>", methods=["PUT"])
+@verify_token
+def reassign_complaint(id):
+    if request.user_role != 'admin':
+        return jsonify({"error": "Admin access required"}), 403
+        
+    data = request.get_json()
+    new_agent = data.get("agent")
+    
+    if not new_agent:
+        return jsonify({"error": "Agent name is required"}), 400
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE complaint_master
+        SET agent = %s
+        WHERE id = %s
+    """, (new_agent, id))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return jsonify({"message": f"Complaint reassigned to {new_agent}"})
 
 
 # 4. Student complaints (INDIVIDUAL VIEW)
@@ -261,7 +324,20 @@ def student_complaints(id):
     cursor.close()
     conn.close()
 
-    return jsonify(rows)
+    pending_complaints = []
+    resolved_complaints = []
+
+    for row in rows:
+        complaint_data = {"text": row[0], "status": row[1]}
+        if row[1] == 'resolved':
+            resolved_complaints.append(complaint_data)
+        else:
+            pending_complaints.append(complaint_data)
+
+    return jsonify({
+        "pending": pending_complaints,
+        "resolved": resolved_complaints
+    })
 
 
 # 5. Track by ticket ID
@@ -272,7 +348,7 @@ def track_complaint(ticket_id):
     cursor = conn.cursor()
     
     cursor.execute("""
-        SELECT normalized_text, department, priority, status, count
+        SELECT normalized_text, department, priority, status, count, agent
         FROM complaint_master
         WHERE ticket_id = %s
     """, (ticket_id,))
@@ -287,7 +363,8 @@ def track_complaint(ticket_id):
             "department": row[1],
             "priority": row[2],
             "status": row[3],
-            "count": row[4]
+            "count": row[4],
+            "agent": row[5]
         })
     else:
         return jsonify({"error": "Ticket not found"}), 404
@@ -359,19 +436,44 @@ def login():
     cursor.execute("SELECT id, name, password, role FROM users WHERE email = %s", (email,))
     row = cursor.fetchone()
 
-    cursor.close()
-    conn.close()
-
     if not row:
+        cursor.close()
+        conn.close()
         return jsonify({"error": "User not found"}), 404
 
     user_id, name, db_password, db_role = row
 
-    if not bcrypt.checkpw(password.encode('utf-8'), db_password.encode('utf-8')):
+    # Automatically upgrade plaintext passwords on successful login
+    is_valid_password = False
+    needs_upgrade = False
+
+    try:
+        if bcrypt.checkpw(password.encode('utf-8'), db_password.encode('utf-8')):
+            is_valid_password = True
+    except ValueError:
+        # Invalid hash format (could be plain text)
+        if password == db_password:
+            is_valid_password = True
+            needs_upgrade = True
+
+    if not is_valid_password:
+        cursor.close()
+        conn.close()
         return jsonify({"error": "Invalid password"}), 401
 
     if requested_role != db_role:
+        cursor.close()
+        conn.close()
         return jsonify({"error": "Not authorized for this role"}), 403
+
+    # Upgrade the password to bcrypt if it was plain text
+    if needs_upgrade:
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        cursor.execute("UPDATE users SET password = %s WHERE id = %s", (hashed_password, user_id))
+        conn.commit()
+
+    cursor.close()
+    conn.close()
 
     token = generate_token(user_id, db_role)
 
