@@ -25,11 +25,11 @@ export default function Agents() {
     agent.dept.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const getAgentTickets = (agentName) => tickets.filter(t => t.agent === agentName);
-  const getActiveCount = (agentName) => tickets.filter(t => t.agent === agentName && t.status !== 'Resolved').length;
+  const getAgentTickets = (admin) => tickets.filter(t => t.dept === admin.dept);
+  const getActiveCount = (admin) => tickets.filter(t => t.dept === admin.dept && t.status !== 'Resolved').length;
 
-  const selectedAgentTickets = selectedAgent ? getAgentTickets(selectedAgent.name) : [];
-  const unassignedTickets = tickets.filter(t => t.agent === 'Unassigned' && t.status !== 'Resolved');
+  const selectedAgentTickets = selectedAgent ? getAgentTickets(selectedAgent) : [];
+  const unassignedTickets = tickets.filter(t => t.agent === 'Unassigned' && t.status !== 'Resolved' && (!selectedAgent || t.dept !== selectedAgent.dept));
 
   const handleAssignTicket = (ticketId) => {
     reassignTicket(ticketId, selectedAgent.name);
@@ -67,7 +67,7 @@ export default function Agents() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {filteredAgents.map(agent => {
-              const activeTickets = getActiveCount(agent.name);
+              const activeTickets = getActiveCount(agent);
               const isAvailable = agent.status === 'Available';
               return (
                 <Card 
@@ -96,7 +96,7 @@ export default function Agents() {
                     </div>
                     <div>
                       <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">Total Handled</p>
-                      <p className="text-2xl font-bold text-slate-300">{getAgentTickets(agent.name).length}</p>
+                      <p className="text-2xl font-bold text-slate-300">{getAgentTickets(agent).length}</p>
                     </div>
                   </div>
                 </Card>

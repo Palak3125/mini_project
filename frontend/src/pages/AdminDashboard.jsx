@@ -8,19 +8,46 @@ import Card from '../components/Card';
 import Button from '../components/Button';
 import { useTickets } from '../context/TicketContext';
 
-const CHART_DATA = [
-  { name: 'Mon', tickets: 12 },
-  { name: 'Tue', tickets: 19 },
-  { name: 'Wed', tickets: 15 },
-  { name: 'Thu', tickets: 22 },
-  { name: 'Fri', tickets: 30 },
-  { name: 'Sat', tickets: 10 },
-  { name: 'Sun', tickets: 8 },
-];
-
 export default function AdminDashboard() {
-  const { tickets, updateTicketStatus, reassignTicket } = useTickets();
+  const { tickets, agents, updateTicketStatus, reassignTicket } = useTickets();
   const [selectedTicketId, setSelectedTicketId] = useState(null);
+
+  // Dynamic Departments
+  const uniqueDepartments = useMemo(() => {
+    return [...new Set(tickets.map(t => t.dept))].filter(Boolean).sort();
+  }, [tickets]);
+
+  const chartData = useMemo(() => {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const data = [];
+    
+    // Generate last 7 days
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      d.setHours(0, 0, 0, 0);
+      data.push({
+        name: days[d.getDay()],
+        date: d,
+        tickets: 0
+      });
+    }
+
+    tickets.forEach(ticket => {
+      if (ticket.date) {
+        const ticketDate = new Date(ticket.date);
+        if (!isNaN(ticketDate.getTime())) {
+          ticketDate.setHours(0, 0, 0, 0);
+          const dayEntry = data.find(d => d.date.getTime() === ticketDate.getTime());
+          if (dayEntry) {
+            dayEntry.tickets += (ticket.count || 1);
+          }
+        }
+      }
+    });
+
+    return data;
+  }, [tickets]);
 
   // Find full ticket whenever state changes so it updates live
   const selectedTicket = tickets.find(t => t.id === selectedTicketId);
@@ -34,7 +61,11 @@ export default function AdminDashboard() {
   const filteredTickets = useMemo(() => {
     return tickets.filter(t => {
       if (filterPriority !== 'All' && t.priority !== filterPriority) return false;
+      
+      // Default behavior: hide Resolved tickets from inbox unless explicitly selected
+      if (filterStatus === 'All' && t.status === 'Resolved') return false;
       if (filterStatus !== 'All' && t.status !== filterStatus) return false;
+      
       if (filterDept !== 'All' && t.dept !== filterDept) return false;
 
       if (searchQuery.trim()) {
@@ -78,12 +109,12 @@ export default function AdminDashboard() {
             <h1 className="text-3xl font-bold text-white mb-1">Overview Dashboard</h1>
             <p className="text-slate-400">Welcome back. Here is the AI-analyzed snapshot of current operations.</p>
           </div>
-          <div className="flex items-center gap-4">
+          {/* <div className="flex items-center gap-4">
             <span className="flex items-center gap-2 bg-blue-500/10 text-blue-400 border border-blue-500/20 px-4 py-2 rounded-lg font-medium text-sm transition-all hover:bg-blue-500/20 hover:shadow-[0_0_15px_rgba(59,130,246,0.3)] cursor-default">
               <BrainCircuit className="w-5 h-5 animate-pulse" />
               AI Model: v4.2 Active
             </span>
-          </div>
+          </div> */}
         </div>
 
         {/* Metrics Row */}
@@ -134,7 +165,7 @@ export default function AdminDashboard() {
             </h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={CHART_DATA}>
+                <AreaChart data={chartData}>
                   <defs>
                     <linearGradient id="colorTickets" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
@@ -212,13 +243,9 @@ export default function AdminDashboard() {
                   onChange={(e) => setFilterDept(e.target.value)}
                 >
                   <option value="All">All Departments</option>
-                  <option value="Technical Support">Technical Support</option>
-                  <option value="Billing">Billing</option>
-                  <option value="IT Infrastructure">IT Infrastructure</option>
-                  <option value="Product">Product</option>
-                  <option value="Engineering">Engineering</option>
-                  <option value="Legal">Legal</option>
-                  <option value="General User Issue">General User Issue</option>
+                  {uniqueDepartments.map(dept => (
+                    <option key={dept} value={dept}>{dept}</option>
+                  ))}
                 </select>
               </div>
 
@@ -274,7 +301,14 @@ export default function AdminDashboard() {
                       className="hover:bg-slate-800/50 transition-colors cursor-pointer group"
                       onClick={() => setSelectedTicketId(ticket.id)}
                     >
-                      <td className="p-5 font-mono font-medium text-slate-300 group-hover:text-blue-400 transition-colors">{ticket.id}</td>
+                      <td className="p-5 font-mono font-medium text-slate-300 group-hover:text-blue-400 transition-colors">
+                        {ticket.id}
+                        {ticket.count > 1 && (
+                          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                            {ticket.count}x
+                          </span>
+                        )}
+                      </td>
                       <td className="p-5 text-slate-200 truncate max-w-[200px]" title={ticket.text}>{ticket.text}</td>
                       <td className="p-5 text-slate-400 font-medium">{ticket.dept}</td>
                       <td className="p-5"><StatusBadge status={ticket.priority} type="priority" /></td>
@@ -402,10 +436,9 @@ export default function AdminDashboard() {
                     defaultValue=""
                   >
                     <option value="" disabled>Choose an agent...</option>
-                    <option value="John Admin">John Admin</option>
-                    <option value="Sarah Jenkins">Sarah Jenkins</option>
-                    <option value="Mike Ross">Mike Ross</option>
-                    <option value="Rachel Zane">Rachel Zane</option>
+                    {agents.map(agent => (
+                      <option key={agent.id} value={agent.name}>{agent.name} ({agent.dept})</option>
+                    ))}
                   </select>
                   <button onClick={() => setReassigning(false)} className="w-full text-center text-sm text-slate-500 hover:text-white pt-2">Cancel</button>
                 </div>

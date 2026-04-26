@@ -5,25 +5,17 @@ const TicketContext = createContext();
 
 const API_URL = 'http://localhost:5000';
 
-const FAKE_AGENTS = [
-  { id: 1, name: "John Admin", dept: "Technical Support", status: "Available" },
-  { id: 2, name: "Sarah Jenkins", dept: "Billing", status: "Busy" },
-  { id: 3, name: "Mike Ross", dept: "IT Infrastructure", status: "Available" },
-  { id: 4, name: "David Kim", dept: "Product", status: "Busy" },
-  { id: 5, name: "Rachel Zane", dept: "Legal", status: "Available" },
-];
-
 export const useTickets = () => useContext(TicketContext);
 
 export const TicketProvider = ({ children }) => {
   const [tickets, setTickets] = useState([]);
-  const [agents, setAgents] = useState(FAKE_AGENTS);
+  const [agents, setAgents] = useState([]);
   
   // Auth state
   const [user, setUser] = useState(null);
 
   // App Settings State
-  const [settings, setSettings] = useState({
+  const defaultSettings = {
     aiModelActive: true,
     priorityThresholdHigh: 90,
     priorityThresholdMedium: 70,
@@ -31,6 +23,11 @@ export const TicketProvider = ({ children }) => {
     adminEmail: "admin@enterprise.com",
     emailAlerts: true,
     highPriorityAlerts: true,
+  };
+
+  const [settings, setSettings] = useState(() => {
+    const saved = localStorage.getItem('app_settings');
+    return saved ? JSON.parse(saved) : defaultSettings;
   });
 
   // Restore user session on load
@@ -101,17 +98,18 @@ export const TicketProvider = ({ children }) => {
         const data = await res.json();
         
         if (res.ok) {
-          const mapped = data.map(t => ({
+            const mapped = data.map(t => ({
             _rawId: t.id, // Keep the DB master id for updates
             id: t.ticket_id,
             text: t.normalized_text,
             dept: t.department,
             priority: t.priority,
-            confidence: Math.floor(Math.random() * 20) + 80, // Mock confidence
+            confidence: t.confidence !== undefined ? t.confidence : 85,
             status: mapStatus(t.status),
             agent: t.agent || 'Unassigned',
+            count: t.count || 1,
             keywords: [],
-            date: new Date().toLocaleDateString()
+            date: t.created_at || new Date().toLocaleDateString()
           }));
           setTickets(mapped);
         }
@@ -123,8 +121,8 @@ export const TicketProvider = ({ children }) => {
         const data = await res.json();
         if (res.ok) {
           // Flatten student complaints to fit the format
-          const pending = data.pending.map((c, i) => ({ id: `STU-P${i}`, text: c.text, status: mapStatus(c.status), dept: "Unknown", priority: "Medium", agent: "Unassigned" }));
-          const resolved = data.resolved.map((c, i) => ({ id: `STU-R${i}`, text: c.text, status: mapStatus(c.status), dept: "Unknown", priority: "Medium", agent: "Unassigned" }));
+          const pending = data.pending.map((c, i) => ({ id: c.ticket_id || `STU-P${i}`, text: c.text, status: mapStatus(c.status), dept: "Unknown", priority: "Medium", agent: "Unassigned", count: 1 }));
+          const resolved = data.resolved.map((c, i) => ({ id: c.ticket_id || `STU-R${i}`, text: c.text, status: mapStatus(c.status), dept: "Unknown", priority: "Medium", agent: "Unassigned", count: 1 }));
           setTickets([...pending, ...resolved]);
         }
       }
@@ -134,12 +132,32 @@ export const TicketProvider = ({ children }) => {
     }
   };
 
+  const fetchAgents = async () => {
+    if (!user || user.role !== 'admin') return;
+    try {
+      const res = await fetch(`${API_URL}/admins`, {
+        headers: { 'Authorization': `Bearer ${user.token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setAgents(data);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to load agents');
+    }
+  };
+
   // Optional: automatically fetch on login
   useEffect(() => {
     if (user) {
       fetchTickets();
+      if (user.role === 'admin') {
+        fetchAgents();
+      }
     } else {
       setTickets([]);
+      setAgents([]);
     }
   }, [user]);
 
@@ -156,7 +174,7 @@ export const TicketProvider = ({ children }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${user.token}`
         },
-        body: JSON.stringify({ text })
+        body: JSON.stringify({ text, settings })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to submit complaint');
@@ -255,6 +273,7 @@ export const TicketProvider = ({ children }) => {
 
   const saveSettings = (newSettings) => {
     setSettings(newSettings);
+    localStorage.setItem('app_settings', JSON.stringify(newSettings));
     toast.success("Settings saved");
   };
 

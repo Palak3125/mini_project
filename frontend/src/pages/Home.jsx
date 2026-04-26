@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Send, Shield, Lock, User } from 'lucide-react';
+import { Send, Shield, Lock } from 'lucide-react';
 import Button from '../components/Button';
 import { useTickets } from '../context/TicketContext';
 
@@ -20,9 +20,6 @@ export default function Home() {
     navigate('/login?tab=admin');
   };
 
-  const handleStudentClick = () => {
-    navigate('/login?tab=student');
-  };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] px-4 py-16 animate-in fade-in zoom-in duration-500 relative overflow-hidden">
@@ -59,14 +56,6 @@ export default function Home() {
           >
             Admin Portal
           </Button>
-        </div>
-        <div className="mt-6">
-          <button 
-            onClick={handleStudentClick}
-            className="text-slate-400 hover:text-white transition-colors text-sm hover:underline flex items-center justify-center mx-auto gap-2"
-          >
-            <User className="w-4 h-4" /> Student Portal
-          </button>
         </div>
       </div>
     </div>

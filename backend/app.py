@@ -14,7 +14,7 @@ from functools import wraps
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 app.config['SECRET_KEY'] = 'super-secret-key'
 
 def extract_location(text):
@@ -66,106 +66,158 @@ priority_model = pickle.load(open(os.path.join(BASE_DIR, "models/priority_model.
 @app.route("/complaints", methods=["POST"])
 @verify_token
 def add_complaint():
-    data = request.get_json()
-    text = data.get("text")
-    student_id = request.user_id
-
-    if not text:
-        return jsonify({"error": "Text is required"}), 400
-
-    # preprocess
-    clean_text = preprocess(text)
-    new_vec = vectorizer.transform([clean_text])
-
-    # predictions
-    department = dept_model.predict(new_vec)[0]
-
     try:
-        priority = priority_model.predict(new_vec)[0]
-    except:
-        priority = fallback_priority(text)
+        data = request.get_json() or {}
+        text = data.get("text")
+        student_id = request.user_id
 
-    conn = get_connection()
-    cursor = conn.cursor()
+        if not text:
+            return jsonify({"success": False, "error": "Text is required"}), 400
 
-    # Extract location
-    new_location = extract_location(text)
+        conn = get_connection()
+        cursor = conn.cursor()
 
-    best_match_id = None
-    best_ticket_id = None
-    max_similarity = 0
-    is_duplicate = False
-
-    # Optimization: only query database if location is valid
-    if new_location != 'unknown':
+        # FIX: DUPLICATE COMPLAINT CRASH (Safe check before processing)
         cursor.execute("""
-            SELECT id, normalized_text, ticket_id, location 
-            FROM complaint_master 
-            WHERE location = %s 
-            LIMIT 50
-        """, (new_location,))
+            SELECT cm.ticket_id 
+            FROM complaints c
+            JOIN complaint_master cm ON c.complaint_master_id = cm.id
+            WHERE c.student_id = %s AND c.text = %s
+            LIMIT 1
+        """, (student_id, text))
+        existing_exact = cursor.fetchone()
         
-        rows = cursor.fetchall()
-        for row in rows:
-            existing_id = row[0]
-            existing_text = row[1]
-            existing_ticket_id = row[2] if len(row) > 2 else None
+        if existing_exact:
+            cursor.close()
+            conn.close()
+            return jsonify({
+                "success": True,
+                "message": "Complaint already exists",
+                "ticket_id": existing_exact[0]
+            }), 200
 
-            existing_clean = preprocess(existing_text)
-            existing_vec = vectorizer.transform([existing_clean])
+        settings = data.get("settings", {})
+        ai_active = settings.get("aiModelActive", True)
+        thresh_high = settings.get("priorityThresholdHigh", 90)
+        thresh_medium = settings.get("priorityThresholdMedium", 70)
 
-            similarity = cosine_similarity(new_vec, existing_vec)[0][0]
+        # preprocess
+        clean_text = preprocess(text)
+        new_vec = vectorizer.transform([clean_text])
 
-            if similarity > max_similarity:
-                max_similarity = similarity
-                best_match_id = existing_id
-                best_ticket_id = existing_ticket_id
+        if ai_active:
+            # predictions
+            department = str(dept_model.predict(new_vec)[0])
 
-    # 🎯 Threshold decision
-    if max_similarity > 0.7:
-        # SAME complaint -> increase count
-        master_id = best_match_id
-        ticket_id = best_ticket_id
-        is_duplicate = True
+            try:
+                priority_probs = priority_model.predict_proba(new_vec)[0]
+                confidence = float(max(priority_probs) * 100)
+                if confidence >= thresh_high:
+                    priority = "High"
+                elif confidence >= thresh_medium:
+                    priority = "Medium"
+                else:
+                    priority = "Low"
+            except Exception as e:
+                print("Error calculating priority from probabilities:", e)
+                priority = str(fallback_priority(text))
+                confidence = 50.0
+        else:
+            department = "General"
+            priority = "Medium"
+            confidence = 0.0
 
+        # Extract location
+        new_location = extract_location(text)
+
+        best_match_id = None
+        best_ticket_id = None
+        max_similarity = 0
+        is_duplicate = False
+
+        # Optimization: only query database if location is valid
+        if new_location != 'unknown':
+            cursor.execute("""
+                SELECT id, normalized_text, ticket_id, location 
+                FROM complaint_master 
+                WHERE location = %s 
+                LIMIT 50
+            """, (new_location,))
+            
+            rows = cursor.fetchall()
+            for row in rows:
+                existing_id = row[0]
+                existing_text = row[1]
+                existing_ticket_id = row[2] if len(row) > 2 else None
+
+                existing_clean = preprocess(existing_text)
+                existing_vec = vectorizer.transform([existing_clean])
+
+                similarity = float(cosine_similarity(new_vec, existing_vec)[0][0])
+
+                if similarity > max_similarity:
+                    max_similarity = similarity
+                    best_match_id = existing_id
+                    best_ticket_id = existing_ticket_id
+
+        # 🎯 Threshold decision
+        if max_similarity > 0.7:
+            # SAME complaint -> increase count
+            master_id = best_match_id
+            ticket_id = best_ticket_id
+            is_duplicate = True
+
+            cursor.execute("""
+                UPDATE complaint_master
+                SET count = count + 1
+                WHERE id = %s
+            """, (master_id,))
+        else:
+            # NEW complaint -> insert new master
+            ticket_id = generate_ticket_id()
+
+            # FIX: ADMIN ASSIGNMENT CRASH (SAFE CHECK)
+            cursor.execute("SELECT name FROM users WHERE role = 'admin' AND department = %s LIMIT 1", (department,))
+            admin = cursor.fetchone()
+            assigned_agent = admin[0] if admin else 'Unassigned'
+
+            cursor.execute("""
+                INSERT INTO complaint_master
+                (normalized_text, department, priority, count, ticket_id, location, status, agent, confidence)
+                VALUES (%s, %s, %s, 1, %s, %s, 'pending', %s, %s)
+            """, (text, department, priority, ticket_id, new_location, assigned_agent, confidence))
+
+            master_id = cursor.lastrowid
+
+        # 🔹 Insert individual complaint
         cursor.execute("""
-            UPDATE complaint_master
-            SET count = count + 1
-            WHERE id = %s
-        """, (master_id,))
-    else:
-        # NEW complaint -> insert new master
-        ticket_id = generate_ticket_id()
+            INSERT INTO complaints
+            (complaint_master_id, text, department, priority, status, student_id)
+            VALUES (%s, %s, %s, %s, 'pending', %s)
+        """, (master_id, text, department, priority, student_id))
 
-        cursor.execute("""
-            INSERT INTO complaint_master
-            (normalized_text, department, priority, count, ticket_id, location, status, agent)
-            VALUES (%s, %s, %s, 1, %s, %s, 'pending', 'Unassigned')
-        """, (text, department, priority, ticket_id, new_location))
+        conn.commit()
+        cursor.close()
+        conn.close()
 
-        master_id = cursor.lastrowid
+        message = f"Complaint already exists. Linked to Ticket ID: {ticket_id}" if is_duplicate else f"New complaint registered. Ticket ID: {ticket_id}"
 
-    # 🔹 Insert individual complaint
-    cursor.execute("""
-        INSERT INTO complaints
-        (complaint_master_id, text, department, priority, status, student_id)
-        VALUES (%s, %s, %s, %s, 'pending', %s)
-    """, (master_id, text, department, priority, student_id))
+        return jsonify({
+            "success": True,
+            "ticket_id": ticket_id,
+            "department": department,
+            "priority": priority,
+            "status": "pending",
+            "similarity_used": round(max_similarity, 2),
+            "message": message
+        }), 201
 
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-    message = f"Complaint already exists. Linked to Ticket ID: {ticket_id}" if is_duplicate else f"New complaint registered. Ticket ID: {ticket_id}"
-
-    return jsonify({
-        "ticket_id": ticket_id,
-        "department": department,
-        "priority": priority,
-        "status": "pending",
-        "similarity_used": round(max_similarity, 2),
-        "message": message
-    })
+    except Exception as e:
+        print("ERROR in /complaints:", e)
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 
 # 2. Get grouped complaints (ADMIN VIEW)
@@ -179,14 +231,19 @@ def get_complaints():
     limit = request.args.get('limit', 10, type=int)
     offset = (page - 1) * limit
     status_filter = request.args.get('status')
-
-    status_condition = "status = 'resolved'" if status_filter == 'resolved' else "status IN ('pending', 'in_progress')"
+    
+    if status_filter == 'resolved':
+        status_condition = "status = 'resolved'"
+    elif status_filter == 'active':
+        status_condition = "status IN ('pending', 'in_progress')"
+    else:
+        status_condition = "1=1" # Get all tickets
 
     conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute(f"""
-        SELECT id, ticket_id, normalized_text, department, priority, status, count, agent
+        SELECT id, ticket_id, normalized_text, department, priority, status, count, agent, created_at, confidence
         FROM complaint_master
         WHERE {status_condition}
         ORDER BY count DESC
@@ -208,7 +265,9 @@ def get_complaints():
             "priority": row[4],
             "status": row[5],
             "count": row[6],
-            "agent": row[7]
+            "agent": row[7],
+            "created_at": row[8].strftime("%Y-%m-%dT%H:%M:%S") if len(row) > 8 and row[8] else None,
+            "confidence": round(row[9]) if len(row) > 9 and row[9] is not None else 85
         })
 
     return jsonify(result)
@@ -312,7 +371,7 @@ def student_complaints(id):
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT c.text, cm.status
+        SELECT c.text, cm.status, cm.ticket_id
         FROM complaints c
         JOIN complaint_master cm
         ON c.complaint_master_id = cm.id
@@ -328,7 +387,7 @@ def student_complaints(id):
     resolved_complaints = []
 
     for row in rows:
-        complaint_data = {"text": row[0], "status": row[1]}
+        complaint_data = {"text": row[0], "status": row[1], "ticket_id": row[2]}
         if row[1] == 'resolved':
             resolved_complaints.append(complaint_data)
         else:
@@ -338,6 +397,38 @@ def student_complaints(id):
         "pending": pending_complaints,
         "resolved": resolved_complaints
     })
+
+# 4.5 Fetch all admins
+@app.route("/admins", methods=["GET"])
+@verify_token
+def get_admins():
+    if request.user_role != 'admin':
+        return jsonify({"error": "Admin access required"}), 403
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT id, name, department
+        FROM users
+        WHERE role = 'admin'
+    """)
+
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    admins = []
+    for row in rows:
+        admins.append({
+            "id": row[0],
+            "name": row[1],
+            "dept": row[2],
+            "status": "Available" # UI expectation
+        })
+
+    return jsonify(admins)
+
 
 
 # 5. Track by ticket ID
