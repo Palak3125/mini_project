@@ -76,17 +76,17 @@ The Automated Grievance Triage System addresses these challenges by automating c
 ## System Architecture
 
 User Complaint
-↓
+->
 Text Preprocessing
-↓
+->
 TF-IDF Vectorization
-↓
+->
 Logistic Regression Model
-↓
+->
 Department Prediction
-↓
+->
 Database Storage
-↓
+->
 Admin Dashboard & Tracking
 
 ---
@@ -234,11 +234,7 @@ http://localhost:5000
 * Faster department assignment
 * Reduced manual processing effort
 * Improved grievance management workflow
-
----
-
-## Screenshots
-<img width="1900" height="983" alt="Screenshot 2026-06-03 115713" src="https://github.com/user-attachments/assets/bbc9083f-e0e1-4938-9b82-fd1e0cf63617" />
+* 
 ---
 
 ## License
